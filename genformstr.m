@@ -13,9 +13,9 @@ elseif(ecc == 'Q')
 elseif(ecc == 'H')
     ecbits = '10';
 else
-    fprintf('ERROR, NOT VALID ERROR CORRECTION LEVEL');
+    error('Not a valid correction level.');
 end
-maskbits = dig2bin( (masknum-1) , 3);
+maskbits = dig2bin( masknum , 3);
 fivbits = strcat(ecbits , maskbits);
 
 bitss = strcat(fivbits, dig2bin(0,10));

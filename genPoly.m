@@ -3,6 +3,10 @@ function res = genPoly( numecc , gftab )
 p1 = [ 0 0 ];               % starting poly
 k = 2;
 
+if( numecc < 7 )
+    error('Minimum of 7 Error Codewords per Block is required.');
+end
+
 for i = 1:(numecc-1)
     pp = zeros(1,k + 1);
 

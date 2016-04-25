@@ -1,5 +1,6 @@
 function res = qrmodule( ver , btst , alnvec , ecc)
-%   Draw Qr Code
+% Draw Qr Code
+% Compliment BitString Bits
 btstr = regexprep(num2str(btst ~= char(ones(1,length(btst))+48)) , '\W' ,'');
 
 qrs = (((ver-1)*4)+21);            % module size
@@ -34,11 +35,11 @@ qrcod(qrs-7,1:7)         = seps;           qrcod(qrs-7:qrs,8)      = seps2;
 %% Add Alignment Patterns
 %%
 if(ver > 1)
-    algnpat = [0 0 0 0 0;
-        0 1 1 1 0;
-        0 1 0 1 0;
-        0 1 1 1 0;
-        0 0 0 0 0];
+    algnpat =  [0 0 0 0 0;
+                0 1 1 1 0;
+                0 1 0 1 0;
+                0 1 1 1 0;
+                0 0 0 0 0];
     
     cnt = nnz(alnvec);
     for i = 1:cnt
@@ -57,20 +58,22 @@ end
 %% Add Timing Patterns
 %%
 tog = 0;
-qrcod(9,1:8) = 3;
-qrcod(1:9,9) = 3;
-
+qrcod(9,1:8) = 3;                           % Reserve area to the right of Top Left Finder
+qrcod(1:9,9) = 3;                           % Reserve area to the bottom of the Top Left Finder
 for i = 1:(qrs - 16)
     qrcod(7,i+8) = tog;
     qrcod(i+8,7) = tog;
     tog = ~tog;
 end
+
 %% Add Dark Module & Reserved Areas
 %%
 qrcod((4 * ver) + 9 + 1, 8 + 1) = 0;        % draw dark module
 qrcod(9,qrs-7:qrs) = 3;                     % reserve format information
 qrcod(qrs-6:qrs,9) = 3;
+
 extraSp = 7;
+
 if( ver >= 7 )                              % reserve version informatio
     qrcod(qrs-10:qrs-8,1:6) = 3;
     qrcod(1:6,qrs-10:qrs-8) = 3;
@@ -82,12 +85,12 @@ resbts = zeros(1 , 8);
 qrmsk1 = qrcod; qrmsk2 = qrcod; qrmsk3 = qrcod; qrmsk4 = qrcod;
 qrmsk5 = qrcod; qrmsk6 = qrcod; qrmsk7 = qrcod; qrmsk8 = qrcod;
 
-i = qrs;    j =   i;
-k = 1;      dir = 1;
+i = qrs;    j =   qrs;
+k = 1;      dirUp = 1;
 cnt = 0;
 
 while((i ~= qrs - extraSp) || (j ~= 2))
-    if(dir)                                             % going up
+    if(dirUp)                                           % going up
         if((qrcod(i,j) == 2) && (qrcod(i,j-1) == 2))    % fill if empty
             qrcod(i,j) = str2double(btstr(k));
             qrcod(i,j-1) = str2double(btstr(k+1));
@@ -106,9 +109,9 @@ while((i ~= qrs - extraSp) || (j ~= 2))
             cnt = cnt + 2;
             if(i == 1)
                 j = j - 2;
-                dir = ~dir;
+                dirUp = ~dirUp;
             else
-                i = i - 1;                               % move up a row
+                i = i - 1;                              % move up a row
             end
         elseif((i == qrs) && (j == 9))                  % near bottom left finder pattern
             i = i - 8;
@@ -116,7 +119,7 @@ while((i ~= qrs - extraSp) || (j ~= 2))
             if(qrcod(i-1,j) == 3)
                 i = 1;
                 j = qrs - 11;
-                dir = ~dir;
+                dirUp = ~dirUp;
                 for i = 1:6
                     qrcod(i,j) = str2double(btstr(k));
                     %% Mask Patterns
@@ -136,7 +139,7 @@ while((i ~= qrs - extraSp) || (j ~= 2))
         elseif((qrcod(i,j-1) == 0) && (qrcod(i,j) == 0))    % check for align pattern
             i = i - 5;                                      % move up five rows
         elseif((qrcod(i,j-1) == 2) && (qrcod(i,j) == 0))    % check to left of align pattern
-            qrcod(i,j-1) = str2double(btstr(k));          % put bit to the left
+            qrcod(i,j-1) = str2double(btstr(k));            % put bit to the left
             %% Mask Patterns
             %%
             resbts = maskpat( qrcod(i,j-1) , i , (j - 1 ));
@@ -153,7 +156,7 @@ while((i ~= qrs - extraSp) || (j ~= 2))
                 j = j - 2;                                  % move left two columns
             end
             i = i + 1;                                  % go back to previous row
-            dir = ~dir;                                 % flip directions
+            dirUp = ~dirUp;                                 % flip directions
         end
     else
         if((qrcod(i,j) == 2) && (qrcod(i,j-1) == 2))    % fill if empty
@@ -173,9 +176,9 @@ while((i ~= qrs - extraSp) || (j ~= 2))
             cnt = cnt + 2;
             if(i == qrs)
                 j = j - 2;
-                dir = ~dir;
+                dirUp = ~dirUp;
             else
-                i = i + 1;                               % move up a row
+                i = i + 1;                                  % move up a row
             end
         elseif((qrcod(i,j-1) == 1) && (qrcod(i,j) == 0))    % check if horizontal timer pattern
             i = i + 1;
@@ -197,7 +200,7 @@ while((i ~= qrs - extraSp) || (j ~= 2))
         else
             j = j - 2;                                  % move left two columns
             i = i - 1;                                  % go back to previous row
-            dir = ~dir;                                 % flip directions
+            dirUp = ~dirUp;                             % flip directions
         end
     end
 % imagesc(qrcod)
@@ -206,14 +209,15 @@ while((i ~= qrs - extraSp) || (j ~= 2))
 % set(gca,'XTickLabel','');
 % set(gca,'YTickLabel','');
 % set(gca,'Xtick',[],'Ytick',[]);
-% %pause(.05);
+% pause(.8);
 
 end
 
+
 %% Calculate Penalties
 %%
-%  Penalty 1            %  Penalty 2            %  Penalty 3            %  Penalty 3
-%  Consecutive Colors   %  Same Colored Blocks  %  Check for strip pat  %
+%  Penalty 1            %  Penalty 2            %  Penalty 3            %  Penalty 4
+%  Consecutive Colors   %  Same Colored Blocks  %  Check for strip pt.  %  Ratio of white/black modules  
 p1_1 = penlt1(qrmsk1);  p2_1 = penlt2(qrmsk1);  p3_1 = penlt3(qrmsk1);  p4_1 = penlt4(qrmsk1);
 p1_2 = penlt1(qrmsk2);  p2_2 = penlt2(qrmsk2);  p3_2 = penlt3(qrmsk2);  p4_2 = penlt4(qrmsk2);
 p1_3 = penlt1(qrmsk3);  p2_3 = penlt2(qrmsk3);  p3_3 = penlt3(qrmsk3);  p4_3 = penlt4(qrmsk3);
@@ -235,18 +239,20 @@ totp7 = p1_7 + p2_7 + p3_7 + p4_7;
 totp8 = p1_8 + p2_8 + p3_8 + p4_8;
 
 parr  = [totp1 totp2 totp3 totp4 totp5 totp6 totp7 totp8];
+
 %% Determine Best Mask
 %%
 minn = parr(1);
-poss = 1;
+poss = 0;
 for m = 2:8
     if(minn > parr(m))
         minn = parr(m);
-        poss = m;
+        poss = m-1;
     end
 end
+
 qzone(((exwh/2) + 1):(end - (exwh/2)), ((exwh/2) + 1):(end - (exwh/2))) = qrcod;
-qrcod = eval( strcat('qrmsk',num2str(poss)) );      % choose best mask
+qrcod = eval( strcat('qrmsk',num2str(poss+1)) );      % choose best mask
 
 %% Generate Format String
 %%
@@ -254,27 +260,27 @@ frm = genformstr(ecc , poss);
 
 %% Place on QR Matrix
 %%
+frm = fliplr(frm);
 for m = 1:7
-    qrcod(qrs - m + 1 , 9) = ~(str2double(frm(m)));         % right of bottom left finder
-    qrcod(9 , qrs - 8 + m) = ~(str2double(frm(m+7)));       % under right finder pattern
+    qrcod( 9 , qrs - m + 1 ) = ~(str2double(frm(m)));         % under right finder
+    qrcod( qrs - 7 + m , 9 ) = ~(str2double(frm(m+8)));       % to the right of the bottom finder
     
-    if(m < 7)
+    if(m <= 6 )
         qrcod(9 , m) = ~(str2double(frm(m)));               % bottom of top left finder
         qrcod(m , 9) = ~(str2double(frm(16 - m)));          % right of top left finder
     else
-        qrcod(8 , 9) = ~(str2double(frm(m+2)));          % under horizontal timing pattern
-        qrcod(9 , 8) = ~(str2double(frm(m)));            % right of vertical timing pattern
+        qrcod(8 , 9) = ~(str2double(frm(7)));            % under horizontal timing pattern
+        qrcod(9 , 8) = ~(str2double(frm(9)));            % right of vertical timing pattern
     end
 end
-qrcod(9 , qrs) = ~(str2double(frm(15)));                    % under corner of right finder
-qrcod(9 , 9)   = ~(str2double(frm(8)));                     % between timing patterns
-
+qrcod(9 , qrs - 7) = ~(str2double(frm(8)));                     % under corner of right finder
+qrcod(9 , 9)       = ~(str2double(frm(8)));                     % between timing patterns
+    
 %% Place Version Information if Needed
 %%
-
-
 if(ver >= 7)
     verstr = genverstr(ver);
+    verstr = fliplr(verstr);
     
     i = qrs - 10;
     j = 1;
@@ -285,8 +291,8 @@ if(ver >= 7)
                 i = qrs - 10;
             end
         end
-        qrcod(i,j) = ~(str2double(verstr(19-m)));  % place on bottom left version block
-        qrcod(j,i) = ~(str2double(verstr(19-m)));  % place on top right version block
+        qrcod(i,j) = ~(str2double(verstr(m)));  % place on bottom left version block
+        qrcod(j,i) = ~(str2double(verstr(m)));  % place on top right version block
         
         i = i + 1;
     end
@@ -298,6 +304,7 @@ qzone(((exwh/2) + 1):(end - (exwh/2)), ((exwh/2) + 1):(end - (exwh/2))) = qrcod;
 %%
 figure;
 imagesc(qzone);
+%imagesc(qrcod);
 colormap(gray);
 axis square;
 set(gca,'XTickLabel','');

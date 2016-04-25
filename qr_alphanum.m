@@ -1,4 +1,4 @@
-function [res  ver] = qr_alphanum( txt , len , ecc , tcap , terr)
+function [res  vers] = qr_alphanum( txt , len , ecc , tcap , terr)
 % Encoded Portion is Composed of 3 Parts
 %------------.-----------------.--------------.
 % Mode Indic | Character Count | Encoded Data |
@@ -72,7 +72,7 @@ clen = length(curr);
 bitlen = terr(lookup)*8;
 
 if( clen < bitlen )
-    if(terr(lookup)*8 - clen > 4)
+    if( bitlen - clen > 4)
         termn = '0000';
         i=4;
     else
@@ -121,7 +121,6 @@ if( clen < bitlen )
         res = horzcat(curr2 , regexprep(strtrim(sprintf('%s ',ByStr{:})),'\W',''));
 
     else
-        ByStr = '';
         res = curr2;
     end
     
@@ -129,5 +128,5 @@ else
     res = curr;
 end
 
-ver = lookup;
+vers = lookup;
 end
